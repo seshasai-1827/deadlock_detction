@@ -1,17 +1,39 @@
 import pandas as pd
+
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
+
 import emlearn
 
-df = pd.read_csv("./simulator/deadlock_dataset.csv")
+# ==========================================
+# Load Dataset
+# ==========================================
 
-X = df.drop(
-    ["score", "deadlock"],
-    axis=1
+df = pd.read_csv(
+    "./simulator/dining_philosophers_dataset.csv"
 )
 
+# ==========================================
+# Features used on STM32
+# ==========================================
+
+X = df[
+[
+    "blocked_tasks",
+    "blocked_ratio",
+    "edge_count",
+    "graph_density",
+    "mutex_utilization"
+]
+]
+
 y = df["score"]
+
+# ==========================================
+# Train/Test Split
+# ==========================================
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -20,25 +42,57 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
+# ==========================================
+# Random Forest
+# ==========================================
+
 rf = RandomForestRegressor(
     n_estimators=20,
     max_depth=6,
     min_samples_leaf=5,
-    n_jobs=-1,
-    random_state=42
+    random_state=42,
+    n_jobs=-1
 )
 
-rf.fit(X_train, y_train)
+rf.fit(
+    X_train,
+    y_train
+)
 
-pred = rf.predict(X_test)
+# ==========================================
+# Evaluation
+# ==========================================
 
-print("MAE =", mean_absolute_error(y_test, pred))
-print("R²  =", r2_score(y_test, pred))
+pred = rf.predict(
+    X_test
+)
 
-importance = pd.DataFrame({
+print(
+    "MAE =",
+    mean_absolute_error(
+        y_test,
+        pred
+    )
+)
+
+print(
+    "R² =",
+    r2_score(
+        y_test,
+        pred
+    )
+)
+
+# ==========================================
+# Feature Importance
+# ==========================================
+
+importance = pd.DataFrame(
+{
     "Feature": X.columns,
     "Importance": rf.feature_importances_
-})
+}
+)
 
 print(
     importance.sort_values(
@@ -47,8 +101,17 @@ print(
     )
 )
 
+# ==========================================
+# Export to STM32
+# ==========================================
+
 cmodel = emlearn.convert(rf)
+
 cmodel.save(
-    file = "deadlock_rf.h",
+    file="deadlock_rf.h",
     name="deadlock_rf"
+)
+
+print(
+    "\nModel exported to deadlock_rf.h"
 )
